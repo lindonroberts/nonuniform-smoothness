@@ -87,7 +87,7 @@ def generate_problem(d, p, norm='2'):
     return objfun, x0, Rk
 
 
-def test_basic():
+def test_basic(method='lfso'):
     d = 10
     p = 5
     # norm = '2'  # f(x) = ||x||_2^{2p}
@@ -97,7 +97,13 @@ def test_basic():
 
     objfun, x0, Rk = generate_problem(d=d, p=p, norm=norm)
 
-    fs, gs = run_gd_lfso(objfun, x0, Rk, niters, eta, verbose=False)
+    if method == 'lfso':
+        fs, gs = run_gd_lfso(objfun, x0, Rk, niters, eta, verbose=False)
+    elif method == 'gd':
+        eta = 1e-2
+        fs, gs = run_gd(objfun, x0, niters, eta, verbose=False)
+    else:
+        raise RuntimeError("Unknown method '%s'" % method)
     # print(fs)
     # print("*************")
     # print(gs)
@@ -144,16 +150,59 @@ def p_vary(d, norm, eta=1.0, niters=1000):
     return
 
 
+def p_vary_gd(d, norm, eta=1e-2, niters=1000):
+    ps = [1, 2, 3, 4, 5]
+
+    plt.figure()
+    plt.clf()
+    plt.figure()
+    plt.clf()
+    ax = plt.gca()
+
+    for p in ps:
+        print(" - Running p = %g" % p)
+        objfun, x0, Rk = generate_problem(d=d, p=p, norm=norm)
+        if norm == '2':
+            if p <= 2:
+                try_eta = 1e-2
+            elif p == 3:
+                try_eta = 1e-3
+            elif p == 4:
+                try_eta = 1e-4
+            else:
+                try_eta = 1.5e-5
+            fs, gs = run_gd(objfun, x0, niters, try_eta, verbose=False)
+            plt.semilogy(gs / gs[0], '-', linewidth=2, label=r'$p = %g$ ($\eta=%g$)' % (p, try_eta))
+        else:
+            fs, gs = run_gd(objfun, x0, niters, eta, verbose=False)
+            plt.semilogy(gs / gs[0], '-', linewidth=2, label=r'$p = %g$' % p)
+    ax.set_xlabel(r'Iteration $k$', fontsize=FONT_SIZE)
+    ax.set_ylabel(r'$\|\nabla f(x_k)\| / \|\nabla f(x_0)\|$', fontsize=FONT_SIZE)
+    ax.tick_params(axis='both', which='major', labelsize=FONT_SIZE)
+    plt.ylim(1e-8, 10)
+    plt.grid()
+    plt.legend(loc='best')
+    # plt.show()
+    plt.savefig('%s/simple_gd_norm%s_d%g.%s' % (IMG_FOLDER, norm, d, IMG_FMT), bbox_inches='tight')
+    return
+
+
 def main():
+    # test_basic(method='lfso')
+    # test_basic(method='gd')
+
     plt.rc('text', usetex=True)
     plt.rc('font', family='serif')
 
     d = 10
     # norm = '2'  # f(x) = ||x||_2^{2p}
     # norm = '2p'  # f(x) = ||x||_{2p}^{2p}
-    for norm in ['2', '2p']:
-        print("Using norm = %s" % norm)
-        p_vary(d, norm, eta=1.0, niters=10000)
+    # for norm in ['2', '2p']:
+    #     print("Using norm = %s" % norm)
+    #     p_vary(d, norm, eta=1.0, niters=10000)
+
+    p_vary_gd(d, '2', eta=1e-2, niters=10000)
+    # p_vary_gd(d, '2p', eta=1e-2, niters=10000)
     print("Done")
     return
 
